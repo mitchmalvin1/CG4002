@@ -1,0 +1,6 @@
+aiomqtt==2.3.0
+asyncio-mqtt==0.16.1
+colorlog==6.9.0
+paho-mqtt==2.1.0
+pycryptodome==3.21.0
+typing_extensions==4.12.2
