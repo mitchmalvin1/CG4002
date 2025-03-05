@@ -15,7 +15,7 @@ class Action(Enum):
 
     @staticmethod
     def random_action():
-        return random.choice([action for action in Action if action != Action.NONE]).value
+        return random.choice([action for action in Action if (action != Action.NONE and action != Action.LOGOUT)]).value
 
 class ActionStatus(Enum):
     SUCCESS = "success"  # does not necessarily mean the opponent was hit. only to display AR visualisation

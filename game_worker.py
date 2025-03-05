@@ -44,6 +44,7 @@ class GameEngine:
         self.curr_player = 1 if self.curr_player == 2 else 2
 
     async def get_visibility_snow_state(self): 
+        #needa clear queue
         await self.data_to_visualizer_queue.put(
             dumps(
                 {
@@ -54,7 +55,7 @@ class GameEngine:
         )
         players_visibility = loads(await self.data_from_visualizer_queue.get())
         opp_id = "p1" if self.curr_player == 2 else "p2"
-        self.logger.info(f"Received player_visibility : \n {dumps(players_visibility)} ")
+        self.logger.info(f"Received player_visibility : \n {dumps(players_visibility, indent=4)} ")
         return players_visibility[opp_id]["is_visible"],players_visibility[opp_id]["walks_on_snow"]
 
 
@@ -90,7 +91,7 @@ class GameEngine:
     async def update_relay_nodes(self):
         #assertion : gs is always the corrected_game_state returned by eval_server
         gs = self.game_state.get_game_state() 
-        self.logger.info(f"Sending current (corrected) game state to relay node : \n {gs}")
+        self.logger.info(f"Sending current (corrected) game state to relay node : \n {dumps(gs, indent = 4)}")
         await self.data_to_relay_nodes_queue.put(dumps(gs))
         
 

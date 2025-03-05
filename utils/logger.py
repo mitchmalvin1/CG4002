@@ -5,14 +5,6 @@ from colorlog.escape_codes import escape_codes
 
 
 class CustomFormatter(logging.Formatter):
-    # def __init__(self, *args, **kwargs):
-    #     self.class_color_map = {
-    #         "EvalClient": "red",  # Custom color for ExampleClass
-    #         "GameEngine": "blue",  # Custom color for AnotherClass
-    #         "RelayServer": "yellow",
-
-    #     }
-    #     super().__init__(*args, **kwargs)
 
     grey = '\x1b[38;21m'
     blue = '\x1b[38;5;39m'
@@ -25,8 +17,8 @@ class CustomFormatter(logging.Formatter):
         super().__init__()
         self.fmt = fmt
         self.class_color_map = {
-            "EvalClient": self.blue,  # Custom color for ExampleClass
-            "GameEngine": self.red,  # Custom color for AnotherClass
+            "EvalClient": self.blue,
+            "GameEngine": self.red,
             "RelayServer": self.yellow,
             "MqttClient": self.grey
 
@@ -38,51 +30,29 @@ class CustomFormatter(logging.Formatter):
             logging.ERROR: self.red + self.fmt + self.reset,
             logging.CRITICAL: self.bold_red + self.fmt + self.reset
         }
+        
     def format(self, record):
         class_name = record.name.split(".")[-1]
         color = self.class_color_map.get(class_name)
         log_fmt = color + self.fmt + self.reset
         formatter = logging.Formatter(log_fmt)
-        return f"\n----------------------------------\n\n{formatter.format(record)}\n\n----------------------------------\n"
-
-    # def format(self, record):
-    #     # Get the class name from the logger name (this assumes the logger's name is the class name)
-    #     class_name = record.name.split(".")[-1]
-    #     print(class_name)
-    #     # Set default color to white if class name is not in the map
-    #     color = self.class_color_map.get(class_name, "white")
-    #     print(color)
-    #     #print(record.log_color)
-
-    #     # Set the log color based on class name
-    #     record.log_color = color
-        
-    #     log_msg = super().format(record)
-    #     print(log_msg)
-    #     return f"\n-----------------\n{log_msg}\n-----------------\n"
-
+        # return f"\n----------------------------------\n\n{formatter.format(record)}\n\n----------------------------------\n"
+        return formatter.format(record)
 
 class CustomLogger:
     def __init__(self, logger_name, custom_color="white"):
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logging.INFO)
 
-        fmt = '%(name)s | %(module)s.%(funcName)s:%(lineno)s \n\n%(message)s'
+        fmt = '\n----------------------------------\n\n%(name)s | %(module)s.%(funcName)s:%(lineno)s \n\n%(message)s\n\n----------------------------------\n'
 
-        # Create a handler for the console (stdout)
         handler = logging.StreamHandler()
+        file_handler = logging.FileHandler("ext_comm.log")
         handler.setFormatter(CustomFormatter(fmt))
-
-        # # Custom color formatter that changes color based on the class name
-        # formatter = ClassColorFormatter(
-        #     "{log_color} {asctime} - {name} - {levelname} - [{module}.{funcName}:{lineno}] - {message}{reset}",
-        #     datefmt="%Y-%m-%d %H:%M:%S",
-        #     style="{",
-        # )
-
-
-        # handler.setFormatter(formatter)
+        file_handler.setFormatter(logging.Formatter(fmt))
+        
         self.logger.addHandler(handler)
+        self.logger.addHandler(file_handler)
 
     def get_logger(self):
         return self.logger

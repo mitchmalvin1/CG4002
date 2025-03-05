@@ -81,6 +81,8 @@ async def main():
     ))
 
     await asyncio.gather(evaluate_task, relay_task, game_task, visualizer_task)
+    # await asyncio.gather(evaluate_task, relay_task, game_task)
+    
 
 ### --- Run the Process and Event Loop --- ###
 if __name__ == "__main__":
