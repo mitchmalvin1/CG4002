@@ -6,7 +6,8 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 from utils.logger import CustomLogger
 
-CLIENT_PASSWORD = "1234567891234567"
+
+CLIENT_PASSWORD = "1234567890123456"
 VERIFY_HANDSHAKE_PHRASE = "hello"
 
 class EvalClient:
@@ -21,12 +22,16 @@ class EvalClient:
         self.game_engine_eval_queue = game_engine_eval_queue
         self.eval_game_engine_queue = eval_game_engine_queue
         self.logger = CustomLogger(self.__class__.__name__).get_logger()
+
         self.reader = None
         self.writer = None
     
     async def tcp_connect(self):
-        self.reader, self.writer = await asyncio.open_connection(self.target_ip, self.target_port)
-    
+        self.reader, self.writer = await asyncio.wait_for(
+                asyncio.open_connection(self.target_ip, self.target_port),
+                timeout= 2 
+        )
+      
     def aes_encrypt_encode(self, data):
         iv = Random.new().read(AES.block_size)
         cipher = AES.new(CLIENT_PASSWORD.encode(), AES.MODE_CBC, iv)
@@ -39,23 +44,34 @@ class EvalClient:
         self.writer.write(formatted_message)
         await self.writer.drain()
 
-    async def read_exact_bytes(self, num_bytes: int, timeout=60):
+    async def read_exact_bytes(self, num_bytes: int, timeout=3):
         """Reads exactly num_bytes from the reader with a timeout."""
         data = b""
         while len(data) < num_bytes:
             chunk = await asyncio.wait_for(self.reader.read(num_bytes - len(data)), timeout)
             if not chunk:
-                raise ConnectionError("Relay Server disconnected while reading.")
+                raise ConnectionError("Eval Server disconnected while reading.")
             data += chunk
         return data
 
     async def recv_message(self):
         length_data = b""
         while not length_data.endswith(b"_"):
-            chunk = await self.reader.read(1)
-            if not chunk:
-                raise ConnectionError("Relay Server disconnected while reading prefix.")
+            # chunk = await self.reader.read(1)
+            chunk = await asyncio.wait_for(self.reader.read(1), timeout=3)
+            # self.logger.info("Received first byte:", chunk.decode())
             length_data += chunk
+            # try:
+            #     chunk = await asyncio.wait_for(self.reader.read(1), timeout=1)
+            #     self.logger.info("Received first byte:", data.decode())
+            #     length_data += chunk
+            # except asyncio.TimeoutError:
+            #     self.logger.info("Eval server timed out")
+            #     return None
+           
+            # if not chunk:
+            #     raise ConnectionError("Eval Server disconnected while reading prefix.")
+
         length_data = length_data.decode("utf-8")
         message_length = int(length_data[:-1])
         print(f"len(data) expected in bytes : {message_length}, {length_data}")
@@ -63,26 +79,46 @@ class EvalClient:
 
         message = message_data.decode("utf-8")
         return message
-    
+        
     async def initialize_handshake(self):
         await self.tcp_connect() 
         await self.send_message(VERIFY_HANDSHAKE_PHRASE) 
 
     async def run(self):
-        await self.initialize_handshake()
-        self.logger.info("Handshake with eval_server established")
+        try:
+            await self.initialize_handshake()
+            print(f"Connected to {self.target_ip}:{self.target_port}")
+
+            self.logger.info("Handshake with eval_server established")
+        except asyncio.TimeoutError :
+            print(f"Eval server timed out")
+            return
+        except ConnectionRefusedError:
+            print(f"Connection to {self.target_ip}:{self.target_port} was refused (server not listening).")
+            return
+        except OSError as e:
+            print(f"Failed to connect to {self.target_ip}:{self.target_port}: {e}")
+            return
+        except Exception as e:
+            print(f"Failed to connect to {self.target_ip}:{self.target_port}: {e}")
+            return
+
         while True:
             game_state = await self.game_engine_eval_queue.get()
             self.logger.info(f"Fetched from game engine queue : \n  {json.dumps(json.loads(game_state), indent=4)} ")
             await self.send_message(game_state)
             self.logger.info("Message has been sent to eval_servr")
-            eval_resp = await self.recv_message()
+            try :
+                eval_resp = await self.recv_message() 
+            except asyncio.TimeoutError :
+                self.logger.info("eval server timed out")
+                continue
             self.logger.info(f"Received msg from eval_server : \n {json.dumps(json.loads(eval_resp), indent=4)} ")
             if eval_resp is not None :
                 await self.eval_game_engine_queue.put(json.loads(eval_resp))
             else :
-                await self.eval_game_engine_queue.put(None)
-
+                await self.eval_game_engine_queue.put("")
+      
 
 async def evaluate_worker(
     game_engine_eval_queue : asyncio.Queue,
@@ -96,6 +132,8 @@ async def evaluate_worker(
         game_engine_eval_queue,
         eval_game_engine_queue
     )
+
+
     await eval_client.run()
 
         

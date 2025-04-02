@@ -6,6 +6,10 @@ import asyncio
 import socket
 import threading
 import sys
+import os
+
+sys.path.append(os.path.abspath("/home/xilinx/"))
+from Neural_network_accel.pl_accelerator import FPGAAcceleratedNN
 
 async def main():
     game_engine_eval_queue = asyncio.Queue()
@@ -17,9 +21,13 @@ async def main():
     p2_action_queue = asyncio.Queue()
     p1_get_shot_queue = asyncio.Queue()
     p2_get_shot_queue = asyncio.Queue()
+    data_from_relay_nodes_queue = asyncio.Queue()
     data_to_relay_nodes_queue = asyncio.Queue()
     data_from_visualizer_queue = asyncio.Queue()
     data_to_visualizer_queue = asyncio.Queue()
+    data_from_ai_queue = asyncio.Queue()
+    data_to_ai_queue = asyncio.Queue()
+
 
     def get_local_ip():
         try:
@@ -58,6 +66,7 @@ async def main():
         p2_action_queue,
         p1_get_shot_queue,
         p2_get_shot_queue,
+        data_from_relay_nodes_queue,
         data_to_relay_nodes_queue,
     ))
 
@@ -68,6 +77,7 @@ async def main():
         p2_get_shot_queue,
         data_from_visualizer_queue,
         data_to_visualizer_queue,
+        data_from_relay_nodes_queue,
         data_to_relay_nodes_queue,
         game_engine_eval_queue,
         eval_game_engine_queue
@@ -79,6 +89,8 @@ async def main():
         MQTT_BROKER_HOST,
         MQTT_BROKER_PORT
     ))
+
+ 
 
     await asyncio.gather(evaluate_task, relay_task, game_task, visualizer_task)
     # await asyncio.gather(evaluate_task, relay_task, game_task)

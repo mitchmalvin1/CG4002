@@ -37,11 +37,13 @@ class MqttClient:
                     self.logger.info(f"Received msg from visualizer with topic response/visibilities : \n{dumps(formatted_msg, indent = 4)} ")
 
                     await self.data_from_visualizer_queue.put(dumps(formatted_msg))
+    
 
     async def publish(self):
         while True :
             data = loads(await self.data_to_visualizer_queue.get())
             self.logger.info(f"Received from to_visualizer queue : \n {dumps(data, indent=4)}")
+            #await self.client.publish("response/visibilities", payload=None, retain=True) #clear any existing response/visibilities
             await self.client.publish(data["topic"], payload=dumps(data["data"]))
             self.logger.info(f"Successfully published to visualizer with topic {data['topic']}")
 
@@ -50,7 +52,9 @@ class MqttClient:
         try:
             await self.client.subscribe("response/visibilities")
             self.logger.info("Successfully subscribed to topic response/visibilities")
-            await self.client.publish("request/visibilities", payload="dummy")
+            #await self.client.publish("request/visibilities", payload=None, retain = True)
+            # await self.client.publish("response/visibilities", payload=None, retain=True) 
+            
             listen_task = asyncio.create_task(self.listen())
             publish_task = asyncio.create_task(self.publish())
 

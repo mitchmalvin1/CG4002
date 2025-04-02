@@ -13,7 +13,7 @@ class Player:
             'hp'        : self.hp,
             'bullets'   : self.bullets,
             'bombs'     : self.bombs,
-                'shield_hp' : self.shield_hp,
+            'shield_hp' : self.shield_hp,
             'deaths'    : self.deaths,
             'shields'   : self.shields
         }
@@ -40,6 +40,13 @@ class Player:
         
     #does not reset deaths
     def reset_state(self):
+        self.hp = constants.INITIAL_HP
+        self.shield_hp = 0
+        self.bullets = constants.BULLET_PER_RELOAD
+        self.shields = constants.INITIAL_SHIELDS
+        self.bombs = constants.INITIAL_BOMBS
+    
+    def respawn(self):
         self.hp = constants.INITIAL_HP
         self.shield_hp = 0
         self.bullets = constants.BULLET_PER_RELOAD
@@ -137,30 +144,37 @@ class GameState:
         action: str, 
         player: int, 
         is_opponent_visible: bool,
-        is_opponent_in_bomb: bool
+        no_snow_bombs: int
     ) -> ActionStatus:
         attacker, defender = (
             (self.player_1, self.player_2)
             if player == 1
             else (self.player_2, self.player_1)
         )
-        if is_opponent_in_bomb and is_opponent_visible :
+        while is_opponent_visible and no_snow_bombs > 0 :
             attacker.try_bomb_after_effect(defender)
+            no_snow_bombs -=1
         match action:
             case Action.SHOOT.value:
                 if not attacker.try_shoot(defender, is_opponent_visible):
-                    return ActionStatus.FAIL_NOT_ENOUGH_BULLETS
+                    return ActionStatus.FAIL_NOT_ENOUGH_BULLETS.value
+                return ActionStatus.SUCCESS.value
             case Action.SHIELD.value:
                 if not attacker.try_shield():
-                    return ActionStatus.FAIL_NOT_ENOUGH_SHIELDS
+                    return ActionStatus.FAIL_NOT_ENOUGH_SHIELDS.value
+                return ActionStatus.SUCCESS.value
             case Action.RELOAD.value:
                 if not attacker.reload():
-                    return ActionStatus.FAIL_DISALLOWED_RELOAD
+                    return ActionStatus.FAIL_DISALLOWED_RELOAD.value
+                return ActionStatus.SUCCESS.value
             case Action.BOMB.value:
                 if not attacker.try_bomb(defender, is_opponent_visible):
-                    return ActionStatus.FAIL_NOT_ENOUGH_BOMBS
+                    return ActionStatus.FAIL_NOT_ENOUGH_BOMBS.value
+                return ActionStatus.SUCCESS.value
             case Action.FENCING.value | Action.BADMINTON.value | Action.GOLF.value | Action.BOXING.value:
-                attacker.try_action_attack(defender, is_opponent_visible)
+                if not attacker.try_action_attack(defender, is_opponent_visible):
+                    return ActionStatus.FAIL_ACTION_NOT_VISIBLE
+                return ActionStatus.SUCCESS.value
             case _:
                 pass
-        return ActionStatus.SUCCESS
+        return ActionStatus.SUCCESS.value

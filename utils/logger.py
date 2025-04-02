@@ -47,7 +47,8 @@ class CustomLogger:
         fmt = '\n----------------------------------\n\n%(name)s | %(module)s.%(funcName)s:%(lineno)s \n\n%(message)s\n\n----------------------------------\n'
 
         handler = logging.StreamHandler()
-        file_handler = logging.FileHandler("ext_comm.log")
+        # file_handler = logging.FileHandler("ext_comm.log")
+        file_handler = logging.FileHandler("ext_comm.log", mode="w")
         handler.setFormatter(CustomFormatter(fmt))
         file_handler.setFormatter(logging.Formatter(fmt))
         
