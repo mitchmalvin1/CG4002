@@ -133,17 +133,17 @@ class RelayServer:
                     elif(received_dict["type"] == "S") :
                         self.logger.info(f"Received from Relay Node client:\n {json.dumps(received_dict, indent=4)}")
                         print(f"imu 1 buffer length : {len(imu_p1_buffer)}")
-                        if len(imu_p1_buffer) > 50 :
+                        if len(imu_p1_buffer) >= 40 :
                             imu_p1_buffer = imu_p1_buffer[-60:]
                             df = pd.DataFrame(imu_p1_buffer, columns=["Accel_X", "Accel_Y", "Accel_Z", "Gyro_X", "Gyro_Y", "Gyro_Z"])
-                            predictions = self.model.predict(df)
-                            # my_file = Path("one_data.csv")
-                            # df2 = pd.read_csv("one_data.csv") if my_file.is_file() else pd.DataFrame()
-                            # if 'Unnamed: 0' in df2.columns:
-                            #     df2.drop(columns=["Unnamed: 0"], inplace=True)
-                            #     df = pd.concat([df, df2])
-                            # print(len(df))
-                            # df.to_csv("one_data.csv") # comment/ remove later
+                            predictions = self.model.predict(df, 1)
+                            my_file = Path("one_data.csv")
+                            df2 = pd.read_csv("one_data.csv") if my_file.is_file() else pd.DataFrame()
+                            if 'Unnamed: 0' in df2.columns:
+                                df2.drop(columns=["Unnamed: 0"], inplace=True)
+                                df = pd.concat([df, df2])
+                            print(len(df))
+                            df.to_csv("one_data.csv") # comment/ remove later
                             imu_p1_buffer = []
                             print(predictions)
                             action = self.mapping[max(set(predictions), key = predictions.count)]
@@ -160,13 +160,13 @@ class RelayServer:
                             # await self.clear_relay_nodes_queue()
                             # await self.clear_reader(reader)
 
-                            if (is_p2_done) :
-                                await self.clear_reader(reader)
-                                self.logger.info("p2 was previously done and p1 is now done, clearing leftover data in socket")
-                                is_p2_done = False
-                                is_p1_done = False
-                                continue
-                            is_p1_done = True
+                            # if (is_p2_done) :
+                            #     await self.clear_reader(reader)
+                            #     self.logger.info("p2 was previously done and p1 is now done, clearing leftover data in socket")
+                            #     is_p2_done = False
+                            #     is_p1_done = False
+                            #     continue
+                            # is_p1_done = True
                         else :
                             imu_p1_buffer = []
                     elif(received_dict['type'] == 'T') :
@@ -182,7 +182,13 @@ class RelayServer:
                         # await self.clear_relay_nodes_queue()
                         # await self.clear_reader(reader)
                         imu_p1_buffer = []
-                        self.can_send_to_game_engine = True
+                        # if (is_p2_done) :
+                        #     self.logger.info("p2 was previously done and p1 gun is now done, both are false now")
+                        #     is_p2_done = False
+                        #     is_p1_done = False
+                        #     continue
+                        # is_p1_done = True
+                        # self.can_send_to_game_engine = True
                         continue
 
                 elif (received_dict['player_id'] == 2) :
@@ -192,17 +198,17 @@ class RelayServer:
                     elif(received_dict["type"] == "S") :
                         self.logger.info(f"Received from Relay Node client:\n {json.dumps(received_dict, indent=4)}")
                         print(f"imu 2 buffer length : {len(imu_p2_buffer)}")
-                        if len(imu_p2_buffer) > 50 :
+                        if len(imu_p2_buffer) >= 40 :
                             imu_p2_buffer = imu_p2_buffer[-60:]
                             df = pd.DataFrame(imu_p2_buffer, columns=["Accel_X", "Accel_Y", "Accel_Z", "Gyro_X", "Gyro_Y", "Gyro_Z"])
-                            predictions = self.model.predict(df)
-                            # my_file = Path("one_data_p2.csv")
-                            # df2 = pd.read_csv("one_data_p2.csv") if my_file.is_file() else pd.DataFrame()
-                            # if 'Unnamed: 0' in df2.columns:
-                            #     df2.drop(columns=["Unnamed: 0"], inplace=True)
-                            #     df = pd.concat([df, df2])
-                            # print(len(df))
-                            # df.to_csv("one_data_p2.csv") # comment/ remove later
+                            predictions = self.model.predict(df, received_dict["player_id"])
+                            my_file = Path("one_data_p2.csv")
+                            df2 = pd.read_csv("one_data_p2.csv") if my_file.is_file() else pd.DataFrame()
+                            if 'Unnamed: 0' in df2.columns:
+                                df2.drop(columns=["Unnamed: 0"], inplace=True)
+                                df = pd.concat([df, df2])
+                            print(len(df))
+                            df.to_csv("one_data_p2.csv") # comment/ remove later
                             imu_p2_buffer = []
                             print(predictions)
                             action = self.mapping[max(set(predictions), key = predictions.count)]
@@ -218,13 +224,13 @@ class RelayServer:
                             await self.send_message(writer, corrected_game_state)
                             # await self.clear_relay_nodes_queue()
                             # await self.clear_reader(reader)
-                            if (is_p1_done) :
-                                await self.clear_reader(reader)
-                                self.logger.info("p1 was previously done and p2 is now done, clearing leftover data in socket")
-                                is_p1_done = False
-                                is_p2_done = False
-                                continue
-                            is_p2_done = True
+                            # if (is_p1_done) :
+                            #     await self.clear_reader(reader)
+                            #     self.logger.info("p1 was previously done and p2 is now done, clearing leftover data in socket")
+                            #     is_p1_done = False
+                            #     is_p2_done = False
+                            #     continue
+                            # is_p2_done = True
                         else :
                             imu_p2_buffer = []
                     elif(received_dict['type'] == 'T') :
@@ -240,7 +246,13 @@ class RelayServer:
                         # await self.clear_relay_nodes_queue()
                         # await self.clear_reader(reader)
                         imu_p2_buffer = []
-                        self.can_send_to_game_engine = True
+                        # if (is_p1_done) :
+                        #     self.logger.info("p1 was previously done and p2 gun is now done, both are false now")
+                        #     is_p1_done = False
+                        #     is_p2_done = False
+                        #     continue
+                        # is_p2_done = True
+                        # self.can_send_to_game_engine = True
                         continue
     
         except Exception as e:

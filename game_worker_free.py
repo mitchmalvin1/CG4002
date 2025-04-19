@@ -13,16 +13,13 @@ class GameEngine:
         data_to_visualizer_queue: Queue,
         data_from_relay_nodes_queue: Queue,
         data_to_relay_nodes_queue: Queue,
-        game_engine_eval_queue: Queue,
-        eval_game_engine_queue: Queue,
+     
     ):
-
+    
         self.data_from_visualizer_queue = data_from_visualizer_queue
         self.data_to_visualizer_queue = data_to_visualizer_queue
         self.data_from_relay_nodes_queue = data_from_relay_nodes_queue
         self.data_to_relay_nodes_queue = data_to_relay_nodes_queue
-        self.game_engine_eval_queue = game_engine_eval_queue
-        self.eval_game_engine_queue = eval_game_engine_queue
         self.game_state = GameState()
         self.logger = CustomLogger(self.__class__.__name__).get_logger()
         self.curr_player = 1
@@ -57,7 +54,7 @@ class GameEngine:
         #needa clear queue
         while not self.data_from_visualizer_queue.empty() :
             await self.data_from_visualizer_queue.get()
-            self.logger.info("clear visibility queue from previous round")
+            self.logger.info("Cleared visibility queue from previous round")
 
         await self.data_to_visualizer_queue.put(
             dumps(
@@ -70,19 +67,13 @@ class GameEngine:
         try:
             players_visibility = loads(await wait_for(self.data_from_visualizer_queue.get(), timeout=1))
             self.logger.info(f"Received player_visibility : \n {dumps(players_visibility, indent=4)} ")
-            if "p1" in players_visibility :
-                return players_visibility["p1"]["is_visible"],players_visibility["p1"]["no_snow_bombs"]
-            elif "p2" in players_visibility : 
-                return players_visibility["p2"]["is_visible"],players_visibility["p2"]["no_snow_bombs"]
-            else :
-                return True, 0
-
+            return players_visibility[curr]["is_visible"],players_visibility[curr]["no_snow_bombs"]
             # process the item
         except TimeoutError:
             self.logger.info("Times out waiting for visibility response, returning True,0 by default")
             return True,0
            
-
+       
     async def get_corrected_state_from_eval_server(self, predicted_action):
         await self.game_engine_eval_queue.put(
             dumps(
@@ -121,12 +112,10 @@ class GameEngine:
         self.logger.info(f"Sending current (corrected) game state to relay node : \n {dumps(gs, indent = 4)}")
         await self.data_to_relay_nodes_queue.put(dumps(gs))
     
-   
     
     async def run(self):
         while True:
             predicted_action = await self.get_predicted_action()
-         
             (is_opponent_visible, no_snow_bombs) =  await self.get_visibility_snow_state()
             action_status = self.game_state.execute_action(
                 predicted_action,
@@ -135,30 +124,22 @@ class GameEngine:
                 no_snow_bombs
             )
             self.logger.info(f"Round {self.curr_round}, action {predicted_action} executed with status {action_status}")
-            corrected_game_state = await self.get_corrected_state_from_eval_server(predicted_action)
-            await self.update_relay_nodes(corrected_game_state)
-            if self.game_state.is_same_game_state(corrected_game_state) :
-                self.logger.info("No discrepancy in game state hence no update needed, yey!") 
-            else:
-                self.logger.info("Discrepancy in the game state received, updating to the corrected state, oops") 
-                self.game_state.update_game_state(corrected_game_state)
+            self.logger.info(f"Current game state : {dumps(self.game_state.get_game_state(), indent = 4)}")
+            await self.update_relay_nodes(self.game_state.get_game_state())
             await self.update_visualizers(predicted_action)
             self.curr_round += 1
 
-async def game_worker(
+
+async def game_worker_free(
     data_from_visualizer_queue: Queue,
     data_to_visualizer_queue: Queue,
     data_from_relay_nodes_queue: Queue,
     data_to_relay_nodes_queue: Queue,
-    game_engine_eval_queue: Queue,
-    eval_game_engine_queue: Queue,
 ):
     game_engine = GameEngine(
         data_from_visualizer_queue,
         data_to_visualizer_queue,
         data_from_relay_nodes_queue,
         data_to_relay_nodes_queue,
-        game_engine_eval_queue,
-        eval_game_engine_queue,
     )
     await game_engine.run()

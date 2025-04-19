@@ -29,8 +29,9 @@ class EvalClient:
     async def tcp_connect(self):
         self.reader, self.writer = await asyncio.wait_for(
                 asyncio.open_connection(self.target_ip, self.target_port),
-                timeout= 2 
+                timeout= 5
         )
+        print("successfully connected to eval server")
       
     def aes_encrypt_encode(self, data):
         iv = Random.new().read(AES.block_size)
@@ -41,6 +42,7 @@ class EvalClient:
     async def send_message(self, message):
         encrypted_message = self.aes_encrypt_encode(message)
         formatted_message = (str(len(encrypted_message)) + "_").encode() + encrypted_message
+        print(formatted_message)
         self.writer.write(formatted_message)
         await self.writer.drain()
 
@@ -82,6 +84,7 @@ class EvalClient:
         
     async def initialize_handshake(self):
         await self.tcp_connect() 
+        print("successfully connected")
         await self.send_message(VERIFY_HANDSHAKE_PHRASE) 
 
     async def run(self):
@@ -94,7 +97,7 @@ class EvalClient:
             print(f"Eval server timed out")
             return
         except ConnectionRefusedError:
-            print(f"Connection to {self.target_ip}:{self.target_port} was refused (server not listening).")
+            print(f"Connection to {self.target_ip}:{self.target_port} was refused (eval server not listening).")
             return
         except OSError as e:
             print(f"Failed to connect to {self.target_ip}:{self.target_port}: {e}")
@@ -106,12 +109,16 @@ class EvalClient:
         while True:
             game_state = await self.game_engine_eval_queue.get()
             self.logger.info(f"Fetched from game engine queue : \n  {json.dumps(json.loads(game_state), indent=4)} ")
-            await self.send_message(game_state)
-            self.logger.info("Message has been sent to eval_servr")
+         
             try :
+                await self.send_message(game_state)
+                self.logger.info("Message has been sent to eval_servr")
                 eval_resp = await self.recv_message() 
             except asyncio.TimeoutError :
                 self.logger.info("eval server timed out")
+                continue
+            except Exception:
+                self.logger.info("eval server exception")
                 continue
             self.logger.info(f"Received msg from eval_server : \n {json.dumps(json.loads(eval_resp), indent=4)} ")
             if eval_resp is not None :

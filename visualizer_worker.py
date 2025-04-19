@@ -44,7 +44,7 @@ class MqttClient:
             data = loads(await self.data_to_visualizer_queue.get())
             self.logger.info(f"Received from to_visualizer queue : \n {dumps(data, indent=4)}")
             #await self.client.publish("response/visibilities", payload=None, retain=True) #clear any existing response/visibilities
-            await self.client.publish(data["topic"], payload=dumps(data["data"]))
+            await self.client.publish(data["topic"], payload=data["data"])
             self.logger.info(f"Successfully published to visualizer with topic {data['topic']}")
 
     async def start(self):

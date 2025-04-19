@@ -1,6 +1,7 @@
 from evaluation_worker import evaluate_worker
 from relay_worker import relay_worker
 from game_worker import game_worker
+from game_worker_free import game_worker_free
 from visualizer_worker import visualizer_worker
 import asyncio
 import socket
@@ -71,10 +72,6 @@ async def main():
     ))
 
     game_task = asyncio.create_task(game_worker(
-        p1_action_queue,
-        p2_action_queue,
-        p1_get_shot_queue,
-        p2_get_shot_queue,
         data_from_visualizer_queue,
         data_to_visualizer_queue,
         data_from_relay_nodes_queue,
@@ -82,6 +79,13 @@ async def main():
         game_engine_eval_queue,
         eval_game_engine_queue
     ))
+
+    # game_task_free = asyncio.create_task(game_worker_free(
+    #     data_from_visualizer_queue,
+    #     data_to_visualizer_queue,
+    #     data_from_relay_nodes_queue,
+    #     data_to_relay_nodes_queue,
+    # ))
 
     visualizer_task = asyncio.create_task(visualizer_worker(
         data_from_visualizer_queue,
